@@ -70,7 +70,19 @@ services:
       MYSQL_DATABASE: targets_bank
     depends_on:
       - kafka
+      - mysql
 
+  attack:
+    build: attack
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_PASSWORD: pass
+      MYSQL_USER: kobi
+      MYSQL_DATABASE: targets_bank
+    depends_on:
+      - kafka
+      - mysql
 
 volumes:
   kafka_kraft:

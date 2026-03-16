@@ -8,7 +8,7 @@ class KafkaConsumer:
     def __init__(self, logger):
         self.config = {
     "bootstrap.servers": "localhost:9092",
-    "group.id": "order-tracker",
+    "group.id": "team-attack",
     "auto.offset.reset": "earliest"
 }
         self.logger = logger

@@ -25,11 +25,10 @@ Keep the simulator running in the background while you work on your consumer.
 
 Stop it with `Ctrl+C` when done.
 
-
 ## Files you get
 
-| File                   | Description                   |
-|------------------------|-------------------------------|
-| `requirements.txt`     | Python dependencies           |
-| `simulator.py`         | Produces messages to Kafka    |
-| `haversine.py`         | Distance calculation function |
+| File                 | Description                   |
+| -------------------- | ----------------------------- |
+| `requirements.txt` | Python dependencies           |
+| `simulator.py`     | Produces messages to Kafka    |
+| `haversine.py`     | Distance calculation function |
