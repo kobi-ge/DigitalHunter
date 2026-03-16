@@ -59,6 +59,7 @@ services:
     depends_on:
       - mysql
 
+
 volumes:
   kafka_kraft:
   mysqlvol:
