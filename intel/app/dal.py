@@ -31,8 +31,14 @@ SELECT * FROM entities
 WHERE id LIKE {entity_id}
 """
 
-update_entities_query = f"""
-UPDATE entities
-SET 
-WHERE id LIKE {entity_id}
-"""
+
+def prepare_update_query(data):
+    priority_level = data['priority_level']
+    reported_lon = data['reported_lon']
+    reported_lat = data['reported_lat']
+    query = f"""
+            UPDATE entities
+            SET priority_level = {priority_level}, reported_lon = {reported_lon}, reported_lat = {reported_lat}
+            WHERE id LIKE {entity_id}
+            """
+    return query

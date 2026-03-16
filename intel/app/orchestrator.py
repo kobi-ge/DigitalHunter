@@ -1,5 +1,6 @@
 from validations import run_validations
 from dal import *
+from haversine import haversine_km
 
 import json
 
@@ -21,14 +22,25 @@ class Orchestrator:
             data = self.consumer.consume()
             if not data:
                 break
-            valid = run_validations(data=data)
-            data = json.loads(data)
+            valid = run_validations(
+                data=data,
+                mysql_connection=self.mysql,
+                logger=self.logger
+            )
             if not valid:
                 self.producer.produce(data)
                 continue
+            self.logger.info(f"data: {data}")
+            data = json.loads(data)
             self.mysql.insert(
                 query=insert_intel_query,
                 data=data
             )
+            if self.mysql.check_existance(data['entity_id']):
+                query = prepare_update_query(data=data)
+                self.mysql.update(query)
+            else:
+                self.mysql.insert(query=insert_entities_query, data=data)
+ 
             
 

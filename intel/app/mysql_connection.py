@@ -27,6 +27,7 @@ class MysqlConnection:
     def insert(self, query, data):
         try:
             self.cursor.execute(query, data)
+            self.con.commit()
             self.logger.info(f"data: {data} inserted successfully")
         except Exception as e:
             self.logger.error(f"error inserting data: {data} to mysql: {e}")
@@ -34,6 +35,20 @@ class MysqlConnection:
     def update(self, query):
         try:
             self.cursor.execute(query)
+            self.con.commit()
             self.logger.info(f"table updated successfully")
         except Exception as e:
             self.logger.error(f"error updating table: {e}")
+
+    def check_existance(self, entity_id):
+        try:
+            query = f"""
+                SELECT * FROM entities
+                WHERE id LIKE {entity_id}
+                """
+            result = self.cursor.execute(query)
+            if result:
+                return True
+            return False
+        except Exception as e:
+            self.logger.error(f"error checking existance: {e}")

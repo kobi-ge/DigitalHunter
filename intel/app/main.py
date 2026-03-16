@@ -1,5 +1,5 @@
 from orchestrator import Orchestrator
-from consumer import KafkaCounsumer
+from consumer import KafkaConsumer
 from producer import KafkaProducer
 from mysql_connection import MysqlConnection
 
@@ -13,22 +13,20 @@ logging.basicConfig(
 )
 
 
-consumer_instance = KafkaCounsumer(
-    host=os.getenv("KAFKA_HOST"),
-    port=int(os.getenv("KAFKA_PORT")),
-    logger=logging.getLogger(KafkaCounsumer.__module__)
+consumer_instance = KafkaConsumer(
+    logger=logging.getLogger(KafkaConsumer.__module__)
 )
 producer_instance = KafkaProducer(
-    host=os.getenv("KAFKA_HOST"),
-    port=int(os.getenv("KAFKA_PORT")),
+    host=os.getenv("KAFKA_HOST", "localhost"),
+    port=int(os.getenv("KAFKA_PORT", 9092)),
     logger=logging.getLogger(KafkaProducer.__module__)
 )
 mysql_instance = MysqlConnection(
-    host=os.getenv("MYSQL_HOST"),
-    port=int(os.getenv("MYSQL_PORT")),
-    password=os.getenv("MYSQL_PASSWORD"),
-    user=os.getenv("MYSQL_USER"),
-    database=os.getenv("MYSQL_DATABASE"),
+    host=os.getenv("MYSQL_HOST", "localhost"),
+    port=int(os.getenv("MYSQL_PORT", 3306)),
+    password=os.getenv("MYSQL_PASSWORD", "pass"),
+    user=os.getenv("MYSQL_USER", "kobi"),
+    database=os.getenv("MYSQL_DATABASE", "targets_bank"),
     logger=logging.getLogger((MysqlConnection.__module__))
 )
 orchestrator_instance = Orchestrator(

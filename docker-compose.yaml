@@ -58,6 +58,7 @@ services:
       MYSQL_DATABASE: targets_bank
     depends_on:
       - mysql
+
   intel:
     build: intel
     environment:
@@ -70,6 +71,15 @@ services:
       MYSQL_DATABASE: targets_bank
     depends_on:
       - kafka
+
+  elastic:
+    image: elasticsearch:8.12.2
+    ports:
+    - 9200:9200
+    environment:
+      - xpack.security.enabled=False
+      - "ES_JAVA_OPTS=-Xmx1g -Xms1g"
+      - discovery.type=single-node
 
 
 volumes:

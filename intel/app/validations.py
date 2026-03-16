@@ -25,7 +25,8 @@ def validate_fields(data, logger):
         logger.info(f"valid! all fields exist")
         return data
     except Exception as e:
-        logger.error(f"invalid! not all fields exist")
+        logger.info(f"invalid! not all fields exist")
+        return None
 
 def validate_status(mysql_connection, entity_id, logger):
     try:
@@ -34,7 +35,6 @@ def validate_status(mysql_connection, entity_id, logger):
                 WHERE id LIKE {entity_id}
                 """
                 )
-        print(result)
         logger.info(f" result from status check: {result}")
         if not result:
             return False
@@ -42,20 +42,20 @@ def validate_status(mysql_connection, entity_id, logger):
             return False
         return True
     except Exception as e:
-        print(f"error validating status: {e}")
         logger.error(f"error validating status: {e}")
 
 
-def run_validations(data, mysql_connection, entity_id, logger):
+def run_validations(data, mysql_connection, logger):
     json_validation = validate_json(data=data, logger=logger)
     if not json_validation:
         return False
     fields_validation = validate_fields(data=data, logger=logger)
     if not fields_validation:
         return False
+    data = json.loads(data)
     status_validation = validate_status(
         mysql_connection=mysql_connection,
-        entity_id=entity_id,
+        entity_id=data['entity_id'],
         logger=logger
     )
     if not status_validation:

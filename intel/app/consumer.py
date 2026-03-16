@@ -1,24 +1,21 @@
-import json
-
 from confluent_kafka import Consumer
 
 
-class KafkaCounsumer:
-    def __init__(self, host, port, logger):
-        self.host = host
-        self.port = port
+
+class KafkaConsumer:
+    def __init__(self, logger):
         self.config = {
     "bootstrap.servers": "localhost:9092",
-    "group.id": "tean-intel",
+    "group.id": "team-attack",
     "auto.offset.reset": "earliest"
 }
         self.logger = logger
-    
+
     def init_consumer(self):
         try:
             self.consumer = Consumer(self.config)
-            self.consumer.subscribe(["intel"])
-            self.logger.info("🟢 Consumer is running and subscribed to intel topic")
+            self.consumer.subscribe(["attack"])
+            self.logger.info("🟢 Consumer is running and subscribed to attack topic")
         except Exception as e:
             self.logger.error(f"error creating consumer: {e}")
 
@@ -34,12 +31,8 @@ class KafkaCounsumer:
                     continue
 
                 value = msg.value().decode("utf-8")
-                self.logger.info(f"recieved data: {value}")
-                return(value)
+                self.logger.info(f"recieved data: {value} from topic intel")
+                return value
         except KeyboardInterrupt:
-            self.logger.error("\n🔴 Stopping consumer")
-
-        # finally:
-        #     self.consumer.close()
-
+            print("\n🔴 Stopping consumer")
 
