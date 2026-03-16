@@ -24,7 +24,10 @@ services:
     volumes:
       - kafka_kraft:/var/lib/kafka/data
 
-
+  intel:
+    build: intel
+    depends_on:
+      - kafka
 
 
 volumes:
