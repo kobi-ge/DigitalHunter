@@ -24,5 +24,8 @@ services:
     volumes:
       - kafka_kraft:/var/lib/kafka/data
 
+
+
+
 volumes:
   kafka_kraft:
