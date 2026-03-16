@@ -58,6 +58,18 @@ services:
       MYSQL_DATABASE: targets_bank
     depends_on:
       - mysql
+  intel:
+    build: intel
+    environment:
+      KAFKA_HOST: kafka
+      KAFKA_PORT: 3306
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_PASSWORD: pass
+      MYSQL_USER: kobi
+      MYSQL_DATABASE: targets_bank
+    depends_on:
+      - kafka
 
 
 volumes:
