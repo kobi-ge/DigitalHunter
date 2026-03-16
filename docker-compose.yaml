@@ -24,8 +24,20 @@ services:
     volumes:
       - kafka_kraft:/var/lib/kafka/data
 
+  mysql: 
+    image: mysql:latest
+    ports:
+      - 3306:3306
+    volumes:
+    - mysqlvol:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: pass
+      MYSQL_USER: kobi
+      MYSQL_PASSWORD: pass
+      MYSQL_DATABASE: targets_bank 
 
 
 
 volumes:
   kafka_kraft:
+  mysqlvol:
