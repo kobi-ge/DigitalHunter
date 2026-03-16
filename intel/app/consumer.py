@@ -2,11 +2,7 @@ import json
 
 from confluent_kafka import Consumer
 
-consumer_config = {
-    "bootstrap.servers": "localhost:9092",
-    "group.id": "order-tracker",
-    "auto.offset.reset": "earliest"
-}
+
 class KafkaCounsumer:
     def __init__(self, host, port, logger):
         self.host = host
@@ -37,12 +33,11 @@ class KafkaCounsumer:
                     continue
 
                 value = msg.value().decode("utf-8")
-                data = json.loads(value)
-                print(data)
+                return(value)
         except KeyboardInterrupt:
             self.logger.error("\n🔴 Stopping consumer")
 
-        finally:
-            self.consumer.close()
+        # finally:
+        #     self.consumer.close()
 
 
