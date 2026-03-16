@@ -44,9 +44,20 @@ services:
     links: 
     - mysql
     environment:
-     PMA_ARBITRARY: 1
+      PMA_ARBITRARY: 1
+    depends_on:
+      - mysql
 
-
+  targets_bank:
+    build: targets_bank
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_PASSWORD: pass
+      MYSQL_USER: kobi
+      MYSQL_DATABASE: targets_bank
+    depends_on:
+      - mysql
 
 volumes:
   kafka_kraft:
