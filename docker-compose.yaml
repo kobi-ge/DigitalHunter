@@ -36,6 +36,16 @@ services:
       MYSQL_PASSWORD: pass
       MYSQL_DATABASE: targets_bank 
 
+  phpmyadmin:
+    image: phpmyadmin
+    ports: 
+    - 8080:80
+    restart: always
+    links: 
+    - mysql
+    environment:
+     PMA_ARBITRARY: 1
+
 
 
 volumes:

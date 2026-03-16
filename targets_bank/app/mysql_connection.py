@@ -24,3 +24,10 @@ class MysqlConnection:
         except errors.Error as e:
             self.logger.error(f"error connecting to mysql: {e}")
 
+    def create_table(self, query, table_name):
+        try:
+            self.cursor.execute(query)
+            self.logger.info(f"table: {table_name} created successfully")
+        except errors.Error as e:
+            self.logger.error(f"error creting table {table_name}: {e}")
+
