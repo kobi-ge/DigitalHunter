@@ -52,3 +52,15 @@ class MysqlConnection:
             return False
         except Exception as e:
             self.logger.error(f"error checking existance: {e}")
+
+    def get_field(self, field_name, entity_id):
+        try:
+            query = f"""
+                SELECT {field_name} FROM entities
+                WHERE id LIKE {entity_id}
+            """
+            result = self.cursor.execute(query)
+            self.logger.info(f"recieved: {result}")
+        except Exception as e:
+            self.logger.error(f"error retrieving data: {e}")
+

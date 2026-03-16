@@ -41,6 +41,12 @@ class Orchestrator:
                 self.mysql.update(query)
             else:
                 self.mysql.insert(query=insert_entities_query, data=data)
- 
+            distance = haversine_km(
+                lat1= data['reported_lat'],
+                lon1= data['reported_lon'],
+                lat2= self.mysql.get_field("reported_lat", data['entity_id'])
+                lon2= self.mysql.get_field("reported_lon", data['entity_id'])
+            )
+            
             
 
