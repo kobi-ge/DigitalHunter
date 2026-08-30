@@ -1,50 +1,71 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import {
-  INITIAL_TARGET_BANK,
-  INITIAL_INTEL_SIGNALS,
-  INITIAL_ATTACKS,
-  INITIAL_DAMAGE_REPORTS,
-  SIGNAL_TYPES,
-  WEAPON_TYPES
+  PLAYER_SOLDIER,
+  THREAT_CLASSES,
+  ARSENAL_WEAPONS,
+  INITIAL_GAME_ENEMIES,
+  WAVE_DEFINITIONS,
+  SIGNAL_TYPES
 } from "../data/initialData";
-import { haversineKm, BASE_HQ } from "../utils/haversine";
+import { haversineKm } from "../utils/haversine";
 import { soundEngine } from "../utils/audio";
 
 const TacticalContext = createContext(null);
 
 export const TacticalProvider = ({ children }) => {
-  // Target Bank State
-  const [targets, setTargets] = useState(() => {
-    return INITIAL_TARGET_BANK.map(t => ({
-      ...t,
-      distance: haversineKm(BASE_HQ.lat, BASE_HQ.lon, t.lat, t.lon),
-      lastSignalTime: new Date().toISOString(),
-      signalCount: 1,
-      history: [{ lat: t.lat, lon: t.lon, timestamp: new Date().toISOString() }]
-    }));
+  // Player & Base State
+  const [player, setPlayer] = useState({
+    ...PLAYER_SOLDIER,
+    hp: PLAYER_SOLDIER.maxHealth,
+    score: 0,
+    shotsFired: 0,
+    shotsHit: 0,
+    kills: 0,
   });
 
-  // Telemetry Signals State
-  const [signals, setSignals] = useState(INITIAL_INTEL_SIGNALS);
+  // Current Game Wave
+  const [currentWaveNum, setCurrentWaveNum] = useState(1);
+  const [gameState, setGameState] = useState("playing"); // 'playing', 'wave_cleared', 'game_over', 'victory'
 
-  // Attack Operations & Damage Reports State
-  const [attacks, setAttacks] = useState(INITIAL_ATTACKS);
-  const [damageReports, setDamageReports] = useState(INITIAL_DAMAGE_REPORTS);
+  // Enemies Collection
+  const [enemies, setEnemies] = useState(INITIAL_GAME_ENEMIES);
 
-  // Selected Target for Detailed Drawer/Modal
-  const [selectedTargetId, setSelectedTargetId] = useState("TGT-001");
-  const [activeTab, setActiveTab] = useState("dashboard"); // dashboard, map, targetbank, telemetry, strikes, analytics
+  // Arsenal Ammo & Cooldowns
+  const [selectedWeaponId, setSelectedWeaponId] = useState("sniper");
+  const [ammo, setAmmo] = useState({
+    sniper: ARSENAL_WEAPONS.find(w => w.id === "sniper").maxAmmo,
+    drone: ARSENAL_WEAPONS.find(w => w.id === "drone").maxAmmo,
+    mortar: ARSENAL_WEAPONS.find(w => w.id === "mortar").maxAmmo,
+    cas: ARSENAL_WEAPONS.find(w => w.id === "cas").maxAmmo,
+  });
+  const [cooldowns, setCooldowns] = useState({
+    sniper: 0,
+    drone: 0,
+    mortar: 0,
+    cas: 0,
+  });
 
-  // Simulation Controls
-  const [isSimulating, setIsSimulating] = useState(true);
-  const [simSpeed, setSimSpeed] = useState(1); // 1x, 2x, 5x
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  // Active Projectiles in flight
+  const [projectiles, setProjectiles] = useState([]);
 
-  // Active Strike Modal target state
-  const [strikeTarget, setStrikeTarget] = useState(null);
-  const [isAddTargetModalOpen, setIsAddTargetModalOpen] = useState(false);
+  // Active Explosions & Impact Craters on map
+  const [explosions, setExplosions] = useState([]);
+  const [craters, setCraters] = useState([]);
 
-  // Notification Toast System
+  // Live Intel Stream Signals
+  const [signals, setSignals] = useState([]);
+
+  // Vision Mode ('tactical' | 'nvg' | 'flir')
+  const [visionMode, setVisionMode] = useState("tactical");
+
+  // Selected Target on Map
+  const [selectedEnemyId, setSelectedEnemyId] = useState(null);
+  const [activeTab, setActiveTab] = useState("map"); // map, targetbank, telemetry, analytics
+
+  // Resupply Cooldown
+  const [resupplyCooldown, setResupplyCooldown] = useState(0);
+
+  // Notifications
   const [notifications, setNotifications] = useState([]);
 
   const addNotification = useCallback((message, type = "info") => {
@@ -52,180 +73,419 @@ export const TacticalProvider = ({ children }) => {
     setNotifications(prev => [{ id, message, type, time: new Date() }, ...prev.slice(0, 4)]);
     setTimeout(() => {
       setNotifications(prev => prev.filter(n => n.id !== id));
-    }, 5000);
+    }, 4500);
   }, []);
 
-  // Dispatch Strike action
-  const dispatchStrike = useCallback((targetId, weaponType) => {
-    const attackId = `atk-${Math.floor(1000 + Math.random() * 9000)}-${Date.now().toString().slice(-2)}`;
-    const newAttack = {
-      attack_id: attackId,
-      timestamp: new Date().toISOString(),
-      entity_id: targetId,
-      weapon_type: weaponType,
-      status: "in_flight"
-    };
+  // Set Vision Mode with audio feedback
+  const changeVisionMode = (mode) => {
+    soundEngine.playOpticsSwitch();
+    setVisionMode(mode);
+    addNotification(`Optics switched to ${mode.toUpperCase()} mode`, "info");
+  };
 
-    soundEngine.playStrikeLaunch();
-    setAttacks(prev => [newAttack, ...prev]);
-
-    // Update target status to pending strike / targeted
-    setTargets(prev => prev.map(t => {
-      if (t.entity_id === targetId) {
-        return { ...t, status: t.status === "destroyed" ? "destroyed" : "strike_pending" };
-      }
-      return t;
-    }));
-
-    addNotification(`Strike dispatched against ${targetId} using ${weaponType}`, "warning");
-
-    // Auto simulate damage assessment after 3.5 seconds
-    setTimeout(() => {
-      const results = ["destroyed", "damaged", "damaged", "no_damage"];
-      const chosenResult = results[Math.floor(Math.random() * results.length)];
-
-      const newDamageReport = {
-        id: Date.now(),
-        attack_id: attackId,
-        entity_id: targetId,
-        result: chosenResult,
-        timestamp: new Date().toISOString(),
-        assessedBy: "Satellite BDA Automation"
-      };
-
-      setDamageReports(prev => [newDamageReport, ...prev]);
-      setAttacks(prev => prev.map(a => a.attack_id === attackId ? { ...a, status: "completed" } : a));
-
-      // Update target entity status
-      setTargets(prev => prev.map(t => {
-        if (t.entity_id === targetId) {
-          const finalStatus = chosenResult === "destroyed" ? "destroyed" : (chosenResult === "damaged" ? "damaged" : "active");
-          return { ...t, status: finalStatus };
-        }
-        return t;
-      }));
-
-      if (chosenResult === "destroyed") {
-        soundEngine.playAlert();
-        addNotification(`TARGET NEUTRALIZED: ${targetId} destroyed!`, "danger");
-      } else {
-        soundEngine.playBeep(900, 0.1);
-        addNotification(`BDA Result for ${targetId}: ${chosenResult.toUpperCase()}`, chosenResult === "damaged" ? "warning" : "info");
-      }
-    }, 3500);
-
-  }, [addNotification]);
-
-  // Add target manually
-  const addNewTarget = useCallback((newTargetData) => {
-    const distance = haversineKm(BASE_HQ.lat, BASE_HQ.lon, newTargetData.lat, newTargetData.lon);
-    const targetObj = {
-      ...newTargetData,
-      distance,
-      lastSignalTime: new Date().toISOString(),
-      signalCount: 1,
-      history: [{ lat: newTargetData.lat, lon: newTargetData.lon, timestamp: new Date().toISOString() }]
-    };
-
-    setTargets(prev => [targetObj, ...prev]);
-    setSelectedTargetId(newTargetData.entity_id);
-    addNotification(`New entity ${newTargetData.entity_id} added to Targets Bank`, "success");
-    soundEngine.playClick();
-  }, [addNotification]);
-
-  // Telemetry simulation loop (simulates incoming Kafka signals)
+  // Cooldown countdown tick (every 100ms)
   useEffect(() => {
-    if (!isSimulating) return;
+    const cdTimer = setInterval(() => {
+      setCooldowns(prev => {
+        const next = { ...prev };
+        let changed = false;
+        Object.keys(next).forEach(key => {
+          if (next[key] > 0) {
+            next[key] = Math.max(0, Math.round((next[key] - 0.1) * 10) / 10);
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
 
-    const intervalMs = (4000 / simSpeed);
-    const timer = setInterval(() => {
-      // Pick random active target
-      const activeTargets = targets.filter(t => t.status !== "destroyed");
-      if (activeTargets.length === 0) return;
+      setResupplyCooldown(prev => (prev > 0 ? Math.max(0, prev - 0.1) : 0));
+    }, 100);
 
-      const randomTarget = activeTargets[Math.floor(Math.random() * activeTargets.length)];
-      const signalTypeObj = SIGNAL_TYPES[Math.floor(Math.random() * SIGNAL_TYPES.length)];
+    return () => clearInterval(cdTimer);
+  }, []);
 
-      // Jitter coordinates slightly
-      const jitterLat = randomTarget.lat + (Math.random() - 0.5) * 0.008;
-      const jitterLon = randomTarget.lon + (Math.random() - 0.5) * 0.008;
-      const roundedLat = Math.round(jitterLat * 10000) / 10000;
-      const roundedLon = Math.round(jitterLon * 10000) / 10000;
+  // Projectile Flight Animation Tick
+  useEffect(() => {
+    if (projectiles.length === 0) return;
 
-      const signalId = `sig-${Math.random().toString(36).substring(2, 7)}-${Math.random().toString(36).substring(2, 6)}`;
-      const timestamp = new Date().toISOString();
+    const projTimer = setInterval(() => {
+      setProjectiles(prev => {
+        const remaining = [];
+        prev.forEach(p => {
+          const newProgress = p.progress + p.speed;
+          if (newProgress >= 1) {
+            // Impact triggered!
+            handleProjectileImpact(p);
+          } else {
+            remaining.push({ ...p, progress: newProgress });
+          }
+        });
+        return remaining;
+      });
+    }, 50);
 
-      const newSignal = {
-        signal_id: signalId,
-        timestamp,
-        entity_id: randomTarget.entity_id,
-        reported_lat: roundedLat,
-        reported_lon: roundedLon,
-        signal_type: signalTypeObj.id,
-        priority_level: randomTarget.priority_level,
-        source: `Kafka / ${signalTypeObj.id}_STREAM`
+    return () => clearInterval(projTimer);
+  }, [projectiles]);
+
+  // Handle impact damage & visual effects
+  const handleProjectileImpact = useCallback((proj) => {
+    const weapon = ARSENAL_WEAPONS.find(w => w.id === proj.weaponId);
+    const targetPos = proj.targetPos;
+
+    // Trigger audio explosion
+    if (proj.weaponId === "cas") {
+      soundEngine.playExplosion(1.5);
+    } else if (proj.weaponId === "mortar") {
+      soundEngine.playExplosion(1.1);
+    } else if (proj.weaponId === "drone") {
+      soundEngine.playExplosion(0.9);
+    } else {
+      soundEngine.playSniperShot();
+    }
+
+    // Add explosion VFX
+    const explId = Date.now() + Math.random().toString();
+    setExplosions(prev => [
+      ...prev,
+      { id: explId, lat: targetPos.lat, lon: targetPos.lon, weaponId: proj.weaponId, radius: weapon.aoeRadiusKm || 0.4 }
+    ]);
+    setTimeout(() => {
+      setExplosions(prev => prev.filter(e => e.id !== explId));
+    }, 1200);
+
+    // Add lasting crater
+    setCraters(prev => [
+      { id: explId, lat: targetPos.lat, lon: targetPos.lon, weaponId: proj.weaponId },
+      ...prev.slice(0, 15)
+    ]);
+
+    // Apply damage to enemies in radius
+    let hitCount = 0;
+    setEnemies(prev => {
+      return prev.map(enemy => {
+        if (enemy.status === "destroyed") return enemy;
+
+        const distToImpact = haversineKm(targetPos.lat, targetPos.lon, enemy.lat, enemy.lon);
+        const effectiveRadius = (weapon.aoeRadiusKm || 0.3) + 0.2;
+
+        if (distToImpact <= effectiveRadius) {
+          hitCount++;
+          // Calculate falloff damage
+          const dmgFactor = Math.max(0.4, 1 - (distToImpact / effectiveRadius));
+          const actualDmg = Math.round(weapon.damage * dmgFactor);
+          const newHp = Math.max(0, enemy.hp - actualDmg);
+          const isDestroyed = newHp === 0;
+
+          if (isDestroyed) {
+            const threatDef = THREAT_CLASSES[enemy.type] || { points: 100 };
+            setPlayer(pl => ({
+              ...pl,
+              kills: pl.kills + 1,
+              score: pl.score + threatDef.points,
+              shotsHit: pl.shotsHit + 1,
+            }));
+            addNotification(`HOSTILE NEUTRALIZED: ${enemy.name} (${threatDef.name})`, "success");
+          } else {
+            setPlayer(pl => ({ ...pl, shotsHit: pl.shotsHit + 1 }));
+            addNotification(`DIRECT HIT: ${enemy.name} took ${actualDmg} damage`, "warning");
+          }
+
+          return {
+            ...enemy,
+            hp: newHp,
+            status: isDestroyed ? "destroyed" : "damaged",
+            visible: true,
+          };
+        }
+        return enemy;
+      });
+    });
+
+    if (hitCount === 0) {
+      addNotification("Splash negative — Target evaded blast zone", "info");
+    }
+  }, [addNotification]);
+
+  // Main Enemy Mobility & Combat Loop (Runs every 1000ms)
+  useEffect(() => {
+    if (gameState !== "playing") return;
+
+    const gameLoop = setInterval(() => {
+      setEnemies(prev => {
+        let baseDamageThisTick = 0;
+
+        const updated = prev.map(enemy => {
+          if (enemy.status === "destroyed") return enemy;
+
+          // Compute distance to player soldier
+          const distToPlayer = haversineKm(player.lat, player.lon, enemy.lat, enemy.lon);
+
+          // If close to base (< 1.2 km), attack player base!
+          if (distToPlayer <= 1.2) {
+            baseDamageThisTick += enemy.type === "rocket_launcher" ? 20 : (enemy.type === "technical_vehicle" ? 12 : 6);
+            soundEngine.playPerimeterAlert();
+            return {
+              ...enemy,
+              status: "attacking_base",
+              visible: true
+            };
+          }
+
+          // Move enemy closer to player base coordinates
+          const dLat = player.lat - enemy.lat;
+          const dLon = player.lon - enemy.lon;
+          const angle = Math.atan2(dLon, dLat);
+
+          // Add slight erratic movement for motorcycles / foot patrols
+          const erratic = (enemy.type === "motorcycle" || enemy.type === "foot_squad") ? (Math.random() - 0.5) * 0.4 : 0;
+          const stepSize = enemy.type === "motorcycle" ? 0.0018 : (enemy.type === "technical_vehicle" ? 0.0012 : (enemy.type === "sniper_nest" ? 0 : 0.0007));
+
+          const newLat = enemy.lat + Math.cos(angle + erratic) * stepSize;
+          const newLon = enemy.lon + Math.sin(angle + erratic) * stepSize;
+
+          // Check if enemy is within radar radius (15km)
+          const newDist = haversineKm(player.lat, player.lon, newLat, newLon);
+          const isWithinRadar = newDist <= player.radarRadiusKm;
+
+          return {
+            ...enemy,
+            lat: newLat,
+            lon: newLon,
+            distance: newDist,
+            visible: isWithinRadar || enemy.visible
+          };
+        });
+
+        // Apply Base Damage if attacked
+        if (baseDamageThisTick > 0) {
+          setPlayer(p => {
+            const nextHp = Math.max(0, p.hp - baseDamageThisTick);
+            if (nextHp === 0) {
+              setGameState("game_over");
+              addNotification("CRITICAL BASE BREACH: FORWARD BASE COMPROMISED!", "danger");
+            }
+            return { ...p, hp: nextHp };
+          });
+        }
+
+        // Check if all enemies in wave are destroyed
+        const activeEnemies = updated.filter(e => e.status !== "destroyed");
+        if (activeEnemies.length === 0 && updated.length > 0) {
+          if (currentWaveNum >= 5) {
+            setGameState("victory");
+            addNotification("MISSION ACCOMPLISHED: All Sector Hostiles Neutralized!", "success");
+          } else {
+            setGameState("wave_cleared");
+            addNotification(`WAVE ${currentWaveNum} CLEARED! Prepare for next threat escalation.`, "success");
+          }
+        }
+
+        return updated;
+      });
+    }, 1200);
+
+    return () => clearInterval(gameLoop);
+  }, [gameState, player.lat, player.lon, player.radarRadiusKm, currentWaveNum, addNotification]);
+
+  // Periodic Random Intel Signals (Kafka simulated telemetry)
+  useEffect(() => {
+    if (gameState !== "playing") return;
+
+    const intelTimer = setInterval(() => {
+      const activeEnemies = enemies.filter(e => e.status !== "destroyed");
+      if (activeEnemies.length === 0) return;
+
+      const randomTarget = activeEnemies[Math.floor(Math.random() * activeEnemies.length)];
+      const signalType = SIGNAL_TYPES[Math.floor(Math.random() * SIGNAL_TYPES.length)];
+
+      const newSig = {
+        signal_id: `sig-${Math.random().toString(36).substring(2, 7)}`,
+        timestamp: new Date().toISOString(),
+        entity_id: randomTarget.id,
+        target_name: randomTarget.name,
+        reported_lat: randomTarget.lat + (Math.random() - 0.5) * 0.004,
+        reported_lon: randomTarget.lon + (Math.random() - 0.5) * 0.004,
+        signal_type: signalType.id,
+        threat_class: randomTarget.type
       };
 
       soundEngine.playSignalPing();
+      setSignals(prev => [newSig, ...prev.slice(0, 39)]);
 
-      setSignals(prev => [newSignal, ...prev.slice(0, 49)]); // Keep last 50 signals
+      // VISINT reveals exact target visibility
+      if (signalType.id === "VISINT") {
+        setEnemies(prev => prev.map(e => e.id === randomTarget.id ? { ...e, visible: true } : e));
+      }
+    }, 3500);
 
-      // Update target location & history
-      setTargets(prev => prev.map(t => {
-        if (t.entity_id === randomTarget.entity_id) {
-          const newDist = haversineKm(BASE_HQ.lat, BASE_HQ.lon, roundedLat, roundedLon);
-          const updatedHistory = [{ lat: roundedLat, lon: roundedLon, timestamp }, ...(t.history || []).slice(0, 9)];
-          return {
-            ...t,
-            lat: roundedLat,
-            lon: roundedLon,
-            distance: newDist,
-            lastSignalTime: timestamp,
-            signalCount: (t.signalCount || 1) + 1,
-            history: updatedHistory
-          };
-        }
-        return t;
-      }));
+    return () => clearInterval(intelTimer);
+  }, [gameState, enemies]);
 
-    }, intervalMs);
+  // Fire Weapon Action
+  const fireWeapon = useCallback((targetLat, targetLon, enemyId = null) => {
+    const weapon = ARSENAL_WEAPONS.find(w => w.id === selectedWeaponId);
+    if (!weapon) return false;
 
-    return () => clearInterval(timer);
-  }, [isSimulating, simSpeed, targets]);
+    // Check ammo
+    if (ammo[selectedWeaponId] <= 0) {
+      soundEngine.playBeep(400, 0.2);
+      addNotification(`AMMO DEPLETED: No ${weapon.name} remaining! Call resupply.`, "warning");
+      return false;
+    }
 
-  const toggleSound = () => {
-    const newState = soundEngine.toggleSound();
-    setSoundEnabled(newState);
-  };
+    // Check cooldown
+    if (cooldowns[selectedWeaponId] > 0) {
+      soundEngine.playBeep(500, 0.1);
+      addNotification(`${weapon.name} cooling down (${cooldowns[selectedWeaponId]}s)`, "info");
+      return false;
+    }
 
-  const selectedTarget = targets.find(t => t.entity_id === selectedTargetId) || targets[0];
+    // Deduct ammo & set cooldown
+    setAmmo(prev => ({ ...prev, [selectedWeaponId]: prev[selectedWeaponId] - 1 }));
+    setCooldowns(prev => ({ ...prev, [selectedWeaponId]: weapon.cooldownSec }));
+    setPlayer(p => ({ ...p, shotsFired: p.shotsFired + 1 }));
+
+    // Play launch sound
+    if (weapon.sound === "cas") soundEngine.playCasLaunch();
+    else if (weapon.sound === "mortar") soundEngine.playMortarLaunch();
+    else if (weapon.sound === "drone") soundEngine.playDroneLaunch();
+    else soundEngine.playSniperShot();
+
+    // Create projectile flight animation
+    const projId = Date.now() + Math.random().toString();
+    const flightSpeed = 1 / (weapon.travelTimeSec * 20); // ticks
+
+    setProjectiles(prev => [
+      ...prev,
+      {
+        id: projId,
+        weaponId: selectedWeaponId,
+        startPos: { lat: player.lat, lon: player.lon },
+        targetPos: { lat: targetLat, lon: targetLon },
+        targetEnemyId: enemyId,
+        progress: 0,
+        speed: flightSpeed
+      }
+    ]);
+
+    addNotification(`ORDNANCE DISPATCHED: ${weapon.name} inbound to target sector`, "warning");
+    return true;
+  }, [selectedWeaponId, ammo, cooldowns, player.lat, player.lon, addNotification]);
+
+  // Call Ammo Resupply Airdrop
+  const callResupply = useCallback(() => {
+    if (resupplyCooldown > 0) {
+      addNotification(`Resupply transport inbound (${Math.round(resupplyCooldown)}s remaining)`, "info");
+      return;
+    }
+
+    soundEngine.playResupply();
+    setAmmo({
+      sniper: ARSENAL_WEAPONS.find(w => w.id === "sniper").maxAmmo,
+      drone: ARSENAL_WEAPONS.find(w => w.id === "drone").maxAmmo,
+      mortar: ARSENAL_WEAPONS.find(w => w.id === "mortar").maxAmmo,
+      cas: ARSENAL_WEAPONS.find(w => w.id === "cas").maxAmmo,
+    });
+    setResupplyCooldown(25.0);
+    addNotification("AIRDROP RESUPPLY RECEIVED: All munitions restocked!", "success");
+  }, [resupplyCooldown, addNotification]);
+
+  // Start Next Wave
+  const startNextWave = useCallback(() => {
+    const nextWaveNum = currentWaveNum + 1;
+    const waveDef = WAVE_DEFINITIONS.find(w => w.waveNumber === nextWaveNum) || WAVE_DEFINITIONS[WAVE_DEFINITIONS.length - 1];
+
+    setCurrentWaveNum(nextWaveNum);
+    setGameState("playing");
+
+    // Spawn new wave enemies
+    const newEnemies = [];
+    for (let i = 0; i < waveDef.enemyCount; i++) {
+      const type = waveDef.types[i % waveDef.types.length];
+      const threatInfo = THREAT_CLASSES[type];
+
+      // Spawn in perimeter around base (10 - 22 km out)
+      const angle = (i / waveDef.enemyCount) * 2 * Math.PI + (Math.random() - 0.5) * 0.5;
+      const radiusKm = 12 + Math.random() * 8;
+      const latOffset = (radiusKm / 111) * Math.cos(angle);
+      const lonOffset = (radiusKm / (111 * Math.cos(player.lat * Math.PI / 180))) * Math.sin(angle);
+
+      newEnemies.push({
+        id: `THREAT-W${nextWaveNum}-${(i + 1).toString().padStart(2, "0")}`,
+        name: `${threatInfo.name} #${i + 1}`,
+        type: type,
+        lat: player.lat + latOffset,
+        lon: player.lon + lonOffset,
+        hp: threatInfo.maxHp,
+        maxHp: threatInfo.maxHp,
+        status: "active",
+        visible: false,
+        signalType: ["SIGINT", "VISINT", "HUMINT"][i % 3]
+      });
+    }
+
+    setEnemies(newEnemies);
+    soundEngine.playAlert();
+    addNotification(`WAVE ${nextWaveNum} INITIATED: ${waveDef.name}`, "danger");
+  }, [currentWaveNum, player.lat, player.lon, addNotification]);
+
+  // Restart Mission
+  const restartGame = useCallback(() => {
+    setPlayer({
+      ...PLAYER_SOLDIER,
+      hp: PLAYER_SOLDIER.maxHealth,
+      score: 0,
+      shotsFired: 0,
+      shotsHit: 0,
+      kills: 0
+    });
+    setCurrentWaveNum(1);
+    setAmmo({
+      sniper: ARSENAL_WEAPONS.find(w => w.id === "sniper").maxAmmo,
+      drone: ARSENAL_WEAPONS.find(w => w.id === "drone").maxAmmo,
+      mortar: ARSENAL_WEAPONS.find(w => w.id === "mortar").maxAmmo,
+      cas: ARSENAL_WEAPONS.find(w => w.id === "cas").maxAmmo,
+    });
+    setCooldowns({ sniper: 0, drone: 0, mortar: 0, cas: 0 });
+    setEnemies(INITIAL_GAME_ENEMIES);
+    setProjectiles([]);
+    setExplosions([]);
+    setGameState("playing");
+    addNotification("SIMULATION RESTARTED: Ready for engagement", "info");
+  }, [addNotification]);
+
+  const selectedEnemy = enemies.find(e => e.id === selectedEnemyId) || enemies.find(e => e.status !== "destroyed") || enemies[0];
 
   return (
     <TacticalContext.Provider value={{
-      targets,
+      player,
+      enemies,
+      selectedEnemy,
+      selectedEnemyId,
+      setSelectedEnemyId,
+      currentWaveNum,
+      gameState,
+      setGameState,
+      ammo,
+      cooldowns,
+      selectedWeaponId,
+      setSelectedWeaponId,
+      projectiles,
+      explosions,
+      craters,
       signals,
-      attacks,
-      damageReports,
-      selectedTarget,
-      selectedTargetId,
-      setSelectedTargetId,
+      visionMode,
+      changeVisionMode,
+      resupplyCooldown,
+      callResupply,
+      fireWeapon,
+      startNextWave,
+      restartGame,
       activeTab,
       setActiveTab,
-      isSimulating,
-      setIsSimulating,
-      simSpeed,
-      setSimSpeed,
-      soundEnabled,
-      toggleSound,
-      dispatchStrike,
-      strikeTarget,
-      setStrikeTarget,
-      isAddTargetModalOpen,
-      setIsAddTargetModalOpen,
-      addNewTarget,
       notifications,
       addNotification,
-      baseHQ: BASE_HQ
+      baseHQ: { name: "Forward Soldier Post", lat: player.lat, lon: player.lon }
     }}>
       {children}
     </TacticalContext.Provider>
@@ -235,7 +495,7 @@ export const TacticalProvider = ({ children }) => {
 export const useTactical = () => {
   const context = useContext(TacticalContext);
   if (!context) {
-    throw new Error("useTactical must be used within a TacticalProvider");
+    throw new Error("useTactical must be used within TacticalProvider");
   }
   return context;
 };

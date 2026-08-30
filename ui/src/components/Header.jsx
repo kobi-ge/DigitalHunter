@@ -5,126 +5,107 @@ import {
   Map,
   Database,
   Radio,
-  Target,
   BarChart3,
-  Play,
-  Pause,
-  PlusCircle,
   Volume2,
   VolumeX,
-  ShieldAlert,
-  Flame
+  Package,
+  RotateCcw,
+  Sparkles,
+  Flame,
+  Shield
 } from "lucide-react";
 
 export const Header = () => {
   const {
     activeTab,
     setActiveTab,
-    isSimulating,
-    setIsSimulating,
-    simSpeed,
-    setSimSpeed,
     soundEnabled,
     toggleSound,
-    setIsAddTargetModalOpen,
-    signals,
-    targets
+    callResupply,
+    resupplyCooldown,
+    restartGame,
+    currentWaveNum,
+    player,
+    enemies
   } = useTactical();
 
-  const activeP1Count = targets.filter(t => t.priority_level === 1 && t.status !== "destroyed").length;
+  const activeThreats = enemies.filter(e => e.status !== "destroyed").length;
 
   return (
     <header className="header-bar">
       <div className="brand-logo">
         <div className="brand-title">
-          <Crosshair className="w-6 h-6 text-cyan-400 animate-pulse" style={{ color: "var(--accent-cyan)" }} />
-          DIGITAL<span>HUNTER</span>
+          <Crosshair className="w-6 h-6 animate-pulse" style={{ color: "var(--accent-cyan)" }} />
+          FRONTLINE<span>OPERATOR</span>
         </div>
-        <span className="hud-badge">Tactical Defense v2.4</span>
+        <span className="hud-badge">Tactical Sim v3.0</span>
 
-        {activeP1Count > 0 && (
+        {activeThreats > 0 && (
           <span className="badge-priority p1 flex items-center gap-1">
-            <ShieldAlert size={12} />
-            {activeP1Count} P1 ALERT
+            <Flame size={12} />
+            {activeThreats} HOSTILES ACTIVE
           </span>
         )}
       </div>
 
       <nav className="nav-tabs">
         <button
-          className={`nav-tab-btn ${activeTab === "dashboard" ? "active" : ""}`}
-          onClick={() => setActiveTab("dashboard")}
-        >
-          <Crosshair size={16} /> HUD Overview
-        </button>
-        <button
           className={`nav-tab-btn ${activeTab === "map" ? "active" : ""}`}
           onClick={() => setActiveTab("map")}
         >
-          <Map size={16} /> GIS Map
+          <Map size={16} /> Combat Radar
         </button>
         <button
           className={`nav-tab-btn ${activeTab === "targetbank" ? "active" : ""}`}
           onClick={() => setActiveTab("targetbank")}
         >
-          <Database size={16} /> Target Bank ({targets.length})
+          <Database size={16} /> Hostile Target Bank ({enemies.length})
         </button>
         <button
           className={`nav-tab-btn ${activeTab === "telemetry" ? "active" : ""}`}
           onClick={() => setActiveTab("telemetry")}
         >
-          <Radio size={16} /> Kafka Stream
-        </button>
-        <button
-          className={`nav-tab-btn ${activeTab === "strikes" ? "active" : ""}`}
-          onClick={() => setActiveTab("strikes")}
-        >
-          <Flame size={16} /> Strike Log
+          <Radio size={16} /> Live Intel Stream
         </button>
         <button
           className={`nav-tab-btn ${activeTab === "analytics" ? "active" : ""}`}
           onClick={() => setActiveTab("analytics")}
         >
-          <BarChart3 size={16} /> Intel Analytics
+          <BarChart3 size={16} /> Battle Log & Stats
         </button>
       </nav>
 
       <div className="header-actions">
-        {/* Simulation Controls */}
+        {/* Quick Resupply */}
         <button
-          className="action-btn"
-          onClick={() => setIsSimulating(!isSimulating)}
-          title={isSimulating ? "Pause Kafka Telemetry Stream" : "Resume Stream"}
+          className={`action-btn ${resupplyCooldown > 0 ? "disabled" : ""}`}
+          onClick={callResupply}
+          disabled={resupplyCooldown > 0}
+          title="Call Airdrop Munition Resupply (R)"
         >
-          {isSimulating ? <Pause size={14} className="text-amber-400" /> : <Play size={14} className="text-emerald-400" />}
-          <span className="hidden sm:inline">{isSimulating ? "Stream Live" : "Paused"}</span>
+          <Package size={15} className="text-amber-400" />
+          <span className="hidden sm:inline">
+            {resupplyCooldown > 0 ? `Resupply (${Math.round(resupplyCooldown)}s)` : "Resupply (R)"}
+          </span>
         </button>
 
-        <select
-          className="hud-select"
-          value={simSpeed}
-          onChange={(e) => setSimSpeed(Number(e.target.value))}
-          title="Kafka Stream Frequency Speed"
-        >
-          <option value={1}>1x Speed</option>
-          <option value={2}>2x Speed</option>
-          <option value={5}>5x Turbo</option>
-        </select>
-
+        {/* Audio Toggle */}
         <button
           className="action-btn"
           onClick={toggleSound}
-          title={soundEnabled ? "Mute HUD Sound Effects" : "Enable Sound Effects"}
+          title={soundEnabled ? "Mute Combat Sound Effects" : "Enable Sound Effects"}
         >
           {soundEnabled ? <Volume2 size={16} className="text-cyan-400" /> : <VolumeX size={16} className="text-slate-400" />}
         </button>
 
+        {/* Restart Mission */}
         <button
-          className="action-btn primary"
-          onClick={() => setIsAddTargetModalOpen(true)}
+          className="action-btn danger"
+          onClick={restartGame}
+          title="Restart Mission from Wave 1"
         >
-          <PlusCircle size={16} />
-          <span>New Target</span>
+          <RotateCcw size={15} />
+          <span className="hidden sm:inline">Restart</span>
         </button>
       </div>
     </header>

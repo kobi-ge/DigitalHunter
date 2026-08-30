@@ -1,38 +1,23 @@
 import React from "react";
 import { TacticalProvider, useTactical } from "./context/TacticalContext";
 import { Header } from "./components/Header";
-import { KPICards } from "./components/KPICards";
+import { CombatHUD } from "./components/CombatHUD";
 import { TacticalMap } from "./components/TacticalMap";
 import { TelemetryFeed } from "./components/TelemetryFeed";
 import { TargetBank } from "./components/TargetBank";
 import { TargetModal } from "./components/TargetModal";
-import { StrikeModal } from "./components/StrikeModal";
-import { AddTargetModal } from "./components/AddTargetModal";
-import { DamageLog } from "./components/DamageLog";
+import { GameOverModal } from "./components/GameOverModal";
 import { AnalyticsPanel } from "./components/AnalyticsPanel";
 import { AlertCircle, CheckCircle, Info, AlertTriangle } from "lucide-react";
 
-function MainDashboard() {
-  const { activeTab, notifications } = useTactical();
+function MainGame() {
+  const { activeTab, visionMode, notifications } = useTactical();
 
   const renderContent = () => {
     switch (activeTab) {
-      case "dashboard":
-        return (
-          <>
-            <KPICards />
-            <div className="dashboard-grid">
-              <TacticalMap />
-              <div style={{ display: "flex", flexDirection: "column", gap: "16px", height: "100%" }}>
-                <TargetModal />
-              </div>
-            </div>
-          </>
-        );
-
       case "map":
         return (
-          <div style={{ display: "grid", gridTemplateColumns: "3fr 1fr", gap: "16px", height: "calc(100vh - 100px)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "3fr 1.1fr", gap: "14px", height: "calc(100vh - 230px)" }}>
             <TacticalMap />
             <TargetModal />
           </div>
@@ -40,7 +25,7 @@ function MainDashboard() {
 
       case "targetbank":
         return (
-          <div style={{ display: "grid", gridTemplateColumns: "2.5fr 1fr", gap: "16px", height: "calc(100vh - 100px)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "2.5fr 1.1fr", gap: "14px", height: "calc(100vh - 230px)" }}>
             <TargetBank />
             <TargetModal />
           </div>
@@ -48,21 +33,14 @@ function MainDashboard() {
 
       case "telemetry":
         return (
-          <div style={{ height: "calc(100vh - 100px)" }}>
+          <div style={{ height: "calc(100vh - 230px)" }}>
             <TelemetryFeed />
-          </div>
-        );
-
-      case "strikes":
-        return (
-          <div style={{ height: "calc(100vh - 100px)" }}>
-            <DamageLog />
           </div>
         );
 
       case "analytics":
         return (
-          <div style={{ height: "calc(100vh - 100px)" }}>
+          <div style={{ height: "calc(100vh - 230px)" }}>
             <AnalyticsPanel />
           </div>
         );
@@ -73,15 +51,15 @@ function MainDashboard() {
   };
 
   return (
-    <div className="app-container">
+    <div className={`app-container ${visionMode === "nvg" ? "vision-nvg" : (visionMode === "flir" ? "vision-flir" : "")}`}>
       <Header />
       <main className="main-content">
+        <CombatHUD />
         {renderContent()}
       </main>
 
-      {/* Global Modals */}
-      <StrikeModal />
-      <AddTargetModal />
+      {/* Game Over & Wave Cleared Modal */}
+      <GameOverModal />
 
       {/* Toast Notification Overlay */}
       <div className="toast-container">
@@ -102,7 +80,7 @@ function MainDashboard() {
 export default function App() {
   return (
     <TacticalProvider>
-      <MainDashboard />
+      <MainGame />
     </TacticalProvider>
   );
 }

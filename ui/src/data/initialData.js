@@ -1,86 +1,243 @@
-export const INITIAL_TARGET_BANK = [
-  { entity_id: "TGT-001", name: "Convoy Alpha", type: "mobile_vehicle", lat: 31.52, lon: 34.45, priority_level: 1, status: "active" },
-  { entity_id: "TGT-002", name: "Depot Bravo", type: "infrastructure", lat: 31.78, lon: 34.63, priority_level: 2, status: "active" },
-  { entity_id: "TGT-003", name: "Squad Charlie", type: "human_squad", lat: 32.05, lon: 34.78, priority_level: 1, status: "active" },
-  { entity_id: "TGT-004", name: "Launcher Delta", type: "launcher", lat: 31.90, lon: 35.20, priority_level: 1, status: "active" },
-  { entity_id: "TGT-005", name: "Transport Echo", type: "mobile_vehicle", lat: 32.30, lon: 35.50, priority_level: 3, status: "active" },
-  { entity_id: "TGT-006", name: "Bunker Foxtrot", type: "infrastructure", lat: 31.65, lon: 34.35, priority_level: 2, status: "active" },
-  { entity_id: "TGT-007", name: "Patrol Golf", type: "human_squad", lat: 32.45, lon: 35.10, priority_level: 4, status: "active" },
-  { entity_id: "TGT-008", name: "Launcher Hotel", type: "launcher", lat: 31.40, lon: 34.90, priority_level: 1, status: "active" },
-  { entity_id: "TGT-009", name: "Rover India", type: "mobile_vehicle", lat: 32.10, lon: 35.80, priority_level: 5, status: "active" },
-  { entity_id: "TGT-010", name: "Outpost Juliet", type: "infrastructure", lat: 31.85, lon: 34.55, priority_level: 3, status: "active" },
-  { entity_id: "TGT-011", name: "Squad Kilo", type: "human_squad", lat: 32.60, lon: 35.30, priority_level: 2, status: "active" },
-  { entity_id: "TGT-012", name: "Launcher Lima", type: "launcher", lat: 31.55, lon: 35.65, priority_level: 1, status: "active" },
-  { entity_id: "TGT-013", name: "Jeep Mike", type: "mobile_vehicle", lat: 32.25, lon: 34.80, priority_level: 4, status: "active" },
-  { entity_id: "TGT-014", name: "Compound November", type: "infrastructure", lat: 31.70, lon: 35.40, priority_level: 3, status: "active" },
-  { entity_id: "TGT-015", name: "Squad Oscar", type: "human_squad", lat: 32.00, lon: 35.00, priority_level: 2, status: "active" },
+// DIGITALHUNTER: FRONTLINE OPERATOR GAME DATA & DEFINITIONS
+
+export const PLAYER_SOLDIER = {
+  callsign: "Hunter-Actual (You)",
+  lat: 31.8000,
+  lon: 34.8500,
+  radarRadiusKm: 15.0,
+  maxHealth: 100,
+};
+
+export const THREAT_CLASSES = {
+  foot_squad: {
+    id: "foot_squad",
+    name: "Foot Patrol / Cell Squad",
+    icon: "🚶",
+    color: "#ff7700",
+    maxHp: 35,
+    speedKmH: 12,
+    threatLevel: "Medium",
+    points: 100,
+    description: "Infiltrating guerrilla infantry cell utilizing terrain cover.",
+  },
+  motorcycle: {
+    id: "motorcycle",
+    name: "Motorcycle Scout",
+    icon: "🏍️",
+    color: "#ff0055",
+    maxHp: 25,
+    speedKmH: 45,
+    threatLevel: "High Speed",
+    points: 150,
+    description: "Fast erratic scout carrying light explosives directly towards base perimeter.",
+  },
+  technical_vehicle: {
+    id: "technical_vehicle",
+    name: "Armed Technical Vehicle",
+    icon: "🚙",
+    color: "#e11d48",
+    maxHp: 80,
+    speedKmH: 28,
+    threatLevel: "Armored Heavy",
+    points: 250,
+    description: "Up-armored pickup mounted with heavy caliber anti-air / machine gun.",
+  },
+  sniper_nest: {
+    id: "sniper_nest",
+    name: "Concealed Sniper Nest",
+    icon: "🎯",
+    color: "#a855f7",
+    maxHp: 40,
+    speedKmH: 0,
+    threatLevel: "Stealth Threat",
+    points: 200,
+    description: "Stationary camouflaged sniper team covering key approaches.",
+  },
+  rocket_launcher: {
+    id: "rocket_launcher",
+    name: "Mobile Rocket Launcher",
+    icon: "🚀",
+    color: "#dc2626",
+    maxHp: 110,
+    speedKmH: 18,
+    threatLevel: "Critical Bombardment",
+    points: 400,
+    description: "Multiple launch rocket platform staging long-range bombardment against HQ.",
+  },
+};
+
+export const ARSENAL_WEAPONS = [
+  {
+    id: "sniper",
+    key: "1",
+    name: "Sniper Precision Rifle",
+    category: "Instant Kinetic Shot",
+    icon: "🎯",
+    damage: 45,
+    cooldownSec: 1.2,
+    maxAmmo: 12,
+    travelTimeSec: 0.1,
+    aoeRadiusKm: 0,
+    suitableDescription: "Best for single human targets & motorcycle scouts.",
+    sound: "sniper",
+  },
+  {
+    id: "drone",
+    key: "2",
+    name: "FPV Kamikaze Drone",
+    category: "Precision Loitering Munition",
+    icon: "🚀",
+    damage: 95,
+    cooldownSec: 3.5,
+    maxAmmo: 5,
+    travelTimeSec: 1.8,
+    aoeRadiusKm: 0.4,
+    suitableDescription: "Direct precision strike against technicals & moving scouts.",
+    sound: "drone",
+  },
+  {
+    id: "mortar",
+    key: "3",
+    name: "Tactical Mortar Barrage",
+    category: "Area-of-Effect Artillery",
+    icon: "💣",
+    damage: 70,
+    cooldownSec: 5.0,
+    maxAmmo: 6,
+    travelTimeSec: 2.5,
+    aoeRadiusKm: 1.2,
+    suitableDescription: "Area saturation for foot squads & clustered hostiles.",
+    sound: "mortar",
+  },
+  {
+    id: "cas",
+    key: "4",
+    name: "Close Air Support (CAS)",
+    category: "Heavy Ordnance Strike",
+    icon: "🚁",
+    damage: 220,
+    cooldownSec: 10.0,
+    maxAmmo: 2,
+    travelTimeSec: 3.2,
+    aoeRadiusKm: 2.0,
+    suitableDescription: "Massive devastation against rocket launchers & heavy armor.",
+    sound: "cas",
+  },
+];
+
+export const INITIAL_GAME_ENEMIES = [
+  {
+    id: "THREAT-01",
+    name: "Alpha Infiltrators",
+    type: "foot_squad",
+    lat: 31.8900,
+    lon: 34.7800,
+    hp: 35,
+    maxHp: 35,
+    status: "active",
+    visible: true,
+    lastIntelTime: new Date().toISOString(),
+    signalType: "VISINT",
+  },
+  {
+    id: "THREAT-02",
+    name: "Bravo Speed Scout",
+    type: "motorcycle",
+    lat: 31.8400,
+    lon: 34.9600,
+    hp: 25,
+    maxHp: 25,
+    status: "active",
+    visible: true,
+    lastIntelTime: new Date().toISOString(),
+    signalType: "SIGINT",
+  },
+  {
+    id: "THREAT-03",
+    name: "Charlie Technical Gunner",
+    type: "technical_vehicle",
+    lat: 31.7300,
+    lon: 34.7500,
+    hp: 80,
+    maxHp: 80,
+    status: "active",
+    visible: false,
+    lastIntelTime: new Date().toISOString(),
+    signalType: "HUMINT",
+  },
+  {
+    id: "THREAT-04",
+    name: "Delta Concealed Team",
+    type: "sniper_nest",
+    lat: 31.8600,
+    lon: 34.8900,
+    hp: 40,
+    maxHp: 40,
+    status: "active",
+    visible: false,
+    lastIntelTime: new Date().toISOString(),
+    signalType: "SIGINT",
+  },
+  {
+    id: "THREAT-05",
+    name: "Echo Katyusha Launcher",
+    type: "rocket_launcher",
+    lat: 31.9200,
+    lon: 34.9200,
+    hp: 110,
+    maxHp: 110,
+    status: "active",
+    visible: false,
+    lastIntelTime: new Date().toISOString(),
+    signalType: "VISINT",
+  },
+];
+
+export const WAVE_DEFINITIONS = [
+  {
+    waveNumber: 1,
+    name: "Infiltration Vanguard",
+    description: "Guerrilla foot patrols and motorcycle scouts testing the outer perimeter.",
+    enemyCount: 5,
+    types: ["foot_squad", "motorcycle"],
+    spawnIntervalMs: 4000,
+  },
+  {
+    waveNumber: 2,
+    name: "Motorized Blitz",
+    description: "Rapid motorcycle cells and armed technical pickups breaching from multiple vectors.",
+    enemyCount: 8,
+    types: ["motorcycle", "technical_vehicle", "foot_squad"],
+    spawnIntervalMs: 3200,
+  },
+  {
+    waveNumber: 3,
+    name: "Rocket Artillery Threat",
+    description: "Mobile rocket launch teams and concealed snipers establishing firing lines.",
+    enemyCount: 10,
+    types: ["rocket_launcher", "sniper_nest", "technical_vehicle"],
+    spawnIntervalMs: 2800,
+  },
+  {
+    waveNumber: 4,
+    name: "Coordinated Assault",
+    description: "Multi-class hostile offensive with armored gun trucks and fast scouts.",
+    enemyCount: 14,
+    types: ["foot_squad", "motorcycle", "technical_vehicle", "rocket_launcher"],
+    spawnIntervalMs: 2400,
+  },
+  {
+    waveNumber: 5,
+    name: "Maximum Threat Storm",
+    description: "Full-scale enemy battalion advancing from all sectors. Neutralize all HVTs!",
+    enemyCount: 20,
+    types: ["foot_squad", "motorcycle", "technical_vehicle", "sniper_nest", "rocket_launcher"],
+    spawnIntervalMs: 1800,
+  },
 ];
 
 export const SIGNAL_TYPES = [
   { id: "SIGINT", name: "Signals Intelligence", color: "#a855f7" },
   { id: "VISINT", name: "Visual Intelligence", color: "#00f3ff" },
   { id: "HUMINT", name: "Human Intelligence", color: "#ffb700" },
-];
-
-export const WEAPON_TYPES = [
-  { id: "AGM-114 Hellfire", category: "Air-to-Surface Missile", range: "11 km", payload: "8 kg Tandem High Explosive", precision: "0.5m CEP", suitableFor: ["mobile_vehicle", "human_squad"] },
-  { id: "GBU-39 SDB", category: "Small Diameter Bomb", range: "110 km", payload: "93 kg Penetration/Blast", precision: "1.0m CEP", suitableFor: ["infrastructure", "bunker", "launcher"] },
-  { id: "Delilah Missile", category: "Stand-off Cruise Missile", range: "250 km", payload: "30 kg High Explosive", precision: "1.0m CEP", suitableFor: ["launcher", "infrastructure"] },
-  { id: "SPICE-250", category: "Autonomous Precision Bomb", range: "100 km", payload: "113 kg Smart Warhead", precision: "3.0m CEP", suitableFor: ["infrastructure", "mobile_vehicle"] },
-  { id: "Popeye AGM", category: "Heavy Stand-off Missile", range: "78 km", payload: "340 kg Penetration", precision: "2.0m CEP", suitableFor: ["bunker", "infrastructure"] },
-  { id: "Griffin LGM", category: "Miniature Laser Bomb", range: "6 km", payload: "5.9 kg Micro Blast", precision: "0.2m CEP", suitableFor: ["human_squad", "mobile_vehicle"] },
-];
-
-export const INITIAL_INTEL_SIGNALS = [
-  {
-    signal_id: "sig-9021a-412f",
-    timestamp: new Date(Date.now() - 120000).toISOString(),
-    entity_id: "TGT-001",
-    reported_lat: 31.5204,
-    reported_lon: 34.4512,
-    signal_type: "SIGINT",
-    priority_level: 1,
-    source: "Kafka / Consumer-1"
-  },
-  {
-    signal_id: "sig-8812c-091a",
-    timestamp: new Date(Date.now() - 90000).toISOString(),
-    entity_id: "TGT-004",
-    reported_lat: 31.9015,
-    reported_lon: 35.2008,
-    signal_type: "VISINT",
-    priority_level: 1,
-    source: "Recon Drone / Optics"
-  },
-  {
-    signal_id: "sig-1193d-772b",
-    timestamp: new Date(Date.now() - 45000).toISOString(),
-    entity_id: "TGT-008",
-    reported_lat: 31.4002,
-    reported_lon: 34.8995,
-    signal_type: "HUMINT",
-    priority_level: 1,
-    source: "Field Agent 44"
-  }
-];
-
-export const INITIAL_ATTACKS = [
-  {
-    attack_id: "atk-7731-01",
-    timestamp: new Date(Date.now() - 300000).toISOString(),
-    entity_id: "TGT-006",
-    weapon_type: "GBU-39 SDB",
-    status: "evaluated"
-  }
-];
-
-export const INITIAL_DAMAGE_REPORTS = [
-  {
-    id: 1,
-    attack_id: "atk-7731-01",
-    entity_id: "TGT-006",
-    result: "damaged",
-    timestamp: new Date(Date.now() - 250000).toISOString(),
-    assessedBy: "BDA Imagery Cell"
-  }
 ];
